@@ -1,0 +1,267 @@
+    xs = ['mathmatics', 'computer science & IT', 'physics', 'chemistry', 'environmental studies', 'biology', 'geology']
+        xmaj = ["stage1", "stage2", "stage3", "stage4"]
+    majors = {
+    "mathematics": {
+        "stage1": ["Algebra", "Basic Calculus", "Linear Equations", "Probability Basics", "Trigonometry"],
+        "stage2": ["Advanced Calculus", "Differential Equations", "Discrete Mathematics", "Combinatorics", "Number Theory"],
+        "stage3": ["Real Analysis", "Abstract Algebra", "Mathematical Logic", "Graph Theory", "Topology"],
+        "stage4": ["Complex Analysis", "Functional Analysis", "Partial Differential Equations", "Mathematical Modeling", "Applied Statistics"]
+    },
+    "computer science & IT": {
+        "stage1": ["Introduction to Programming", "Data Structures", "Computer Architecture", "Operating Systems Basics", "Web Development"],
+        "stage2": ["Algorithms", "Database Systems", "Object-Oriented Programming", "Networking Fundamentals", "Software Development"],
+        "stage3": ["Artificial Intelligence", "Machine Learning", "Cybersecurity", "Cloud Computing", "Blockchain Technology"],
+        "stage4": ["Big Data Analytics", "Quantum Computing", "Embedded Systems", "Ethical Hacking", "Advanced Web Technologies"]
+    },
+    "physics": {
+        "stage1": ["Classical Mechanics", "Newtonian Physics", "Basic Thermodynamics", "Optics", "Electricity and Magnetism"],
+        "stage2": ["Quantum Mechanics Fundamentals", "Statistical Mechanics", "Electrodynamics", "Solid State Physics", "Acoustics"],
+        "stage3": ["Advanced Quantum Mechanics", "Thermodynamics and Heat Transfer", "Nuclear Physics", "Relativity", "Plasma Physics"],
+        "stage4": ["Astrophysics", "Condensed Matter Physics", "High-Energy Particle Physics", "Quantum Field Theory", "Geophysics"]
+    },
+    "chemistry": {
+        "stage1": ["General Chemistry", "Atomic Structure", "Periodic Table", "Chemical Bonding", "Stoichiometry"],
+        "stage2": ["Organic Chemistry Basics", "Inorganic Chemistry", "Physical Chemistry", "Analytical Chemistry", "Reaction Kinetics"],
+        "stage3": ["Biochemistry", "Materials Chemistry", "Quantum Chemistry", "Spectroscopy", "Chemical Thermodynamics"],
+        "stage4": ["Environmental Chemistry", "Polymer Chemistry", "Industrial Chemistry", "Radiochemistry", "Nanotechnology"]
+    },
+    "environmental studies": {
+        "stage1": ["Introduction to Ecology", "Biodiversity", "Sustainability Principles", "Environmental Ethics", "Conservation"],
+        "stage2": ["Climate Change Science", "Renewable Energy", "Pollution Control", "Ecosystem Management", "Waste Management"],
+        "stage3": ["Environmental Policy and Law", "Sustainable Agriculture", "Carbon Footprint Analysis", "Urban Planning", "Water Resource Management"],
+        "stage4": ["Advanced Climate Modeling", "Environmental Risk Assessment", "Geoengineering", "Sustainable Business Practices", "Global Environmental Issues"]
+    },
+    "biology": {
+        "stage1": ["Cell Biology", "Genetics Basics", "Microbiology", "Human Anatomy", "Ecology"],
+        "stage2": ["Molecular Biology", "Evolutionary Biology", "Botany", "Zoology", "Physiology"],
+        "stage3": ["Immunology", "Biotechnology", "Neuroscience", "Genetic Engineering", "Bioinformatics"],
+        "stage4": ["Pharmacology", "Advanced Biochemistry", "Synthetic Biology", "Epidemiology", "Biomedical Research"]
+    },
+    "geology": {
+        "stage1": ["Introduction to Geology", "Earth Materials", "Plate Tectonics", "Geological Mapping", "Weathering and Erosion"],
+        "stage2": ["Sedimentology", "Mineralogy", "Geochemistry", "Stratigraphy", "Structural Geology"],
+        "stage3": ["Paleontology", "Hydrogeology", "Seismology", "Volcanology", "Petrology"],
+        "stage4": ["Economic Geology", "Engineering Geology", "Geological Hazards", "Planetary Geology"]
+    }
+}
+
+
+    majors = {
+    "mathmatics": [
+        "Algebra", "Calculus"
+    ],
+    "computer science & IT": [
+        "Artificial Intelligence",  "Software Engineering", 
+    ],
+    "physics": [
+        "Quantum Mechanics", "Thermodynamics"
+    ],
+    "chemistry": [
+        "Organic Chemistry", "Inorganic Chemistry", "Physical Chemistry", 
+    ],
+    "environmental studies": [
+        "Climate Change", "Sustainability"
+    ],
+    "biology": [
+        "Genetics", "Microbiology"
+    ],
+    "geology": [
+        "Petrology", "Seismology"
+    ]
+}
+
+tutor:
+xs = ['mathmatics', 'computer science & IT', 'physics', 'chemistry', 'environmental studies', 'biology', 'geology']
+    majors = {
+    "mathmatics": [
+        "Algebra", "Calculus", "Number Theory", "Topology", 
+        "Mathematical Logic", "Statistics", "Probability", "Differential Equations"
+    ],
+    "computer science & IT": [
+        "Artificial Intelligence", "Cybersecurity", "Software Engineering", 
+        "Data Science", "Machine Learning", "Computer Networks", "Blockchain", 
+        "Cloud Computing"
+    ],
+    "physics": [
+        "Quantum Mechanics", "Thermodynamics", "Electromagnetism", 
+        "Classical Mechanics", "Optics", "Astrophysics", "Condensed Matter Physics"
+    ],
+    "chemistry": [
+        "Organic Chemistry", "Inorganic Chemistry", "Physical Chemistry", 
+        "Biochemistry", "Analytical Chemistry", "Theoretical Chemistry"
+    ],
+    "environmental studies": [
+        "Climate Change", "Sustainability", "Ecology", 
+        "Environmental Policy", "Renewable Energy", "Conservation Biology"
+    ],
+    "biology": [
+        "Genetics", "Microbiology", "Neuroscience", "Biotechnology", 
+        "Zoology", "Molecular Biology", "Botany", "Ecology"
+    ],
+    "geology": [
+        "Petrology", "Seismology", "Hydrogeology", "Paleontology", 
+        "Geophysics", "Volcanology", "Geochemistry", "Sedimentology"
+    ]
+}
+     i = 0
+    for x in range(7*40):
+        d = models.tutors()
+        d.tutorEmail = f.Faker().email()
+        d.tutorFirstName = f.Faker().first_name()
+        d.tutorLastName = f.Faker().last_name()
+        d.tutorDepartment = models.departments.objects.get(departmentName=xs[i])
+        d.save()
+        d = None
+        if x in range(40, 281, 40):
+            i =  i + 1
+            print(i)
+    return HttpResponse(content=i, status=200)
+
+
+
+
+
+student:
+
+def home(r: HttpRequest):
+    xs = ['mathmatics', 'computer science & IT', 'physics', 'chemistry', 'environmental studies', 'biology', 'geology']
+    majors = {
+    "mathmatics": [
+        "Algebra", "Calculus", "Number Theory", "Topology", 
+        "Mathematical Logic", "Statistics", "Probability", "Differential Equations"
+    ],
+    "computer science & IT": [
+        "Artificial Intelligence", "Cybersecurity", "Software Engineering", 
+        "Data Science", "Machine Learning", "Computer Networks", "Blockchain", 
+        "Cloud Computing"
+    ],
+    "physics": [
+        "Quantum Mechanics", "Thermodynamics", "Electromagnetism", 
+        "Classical Mechanics", "Optics", "Astrophysics", "Condensed Matter Physics"
+    ],
+    "chemistry": [
+        "Organic Chemistry", "Inorganic Chemistry", "Physical Chemistry", 
+        "Biochemistry", "Analytical Chemistry", "Theoretical Chemistry"
+    ],
+    "environmental studies": [
+        "Climate Change", "Sustainability", "Ecology", 
+        "Environmental Policy", "Renewable Energy", "Conservation Biology"
+    ],
+    "biology": [
+        "Genetics", "Microbiology", "Neuroscience", "Biotechnology", 
+        "Zoology", "Molecular Biology", "Botany", "Ecology"
+    ],
+    "geology": [
+        "Petrology", "Seismology", "Hydrogeology", "Paleontology", 
+        "Geophysics", "Volcanology", "Geochemistry", "Sedimentology"
+    ]
+}
+    i = 0
+    for x in range(7000):
+        d = models.students()
+        d.studentFirstName = f.Faker().first_name()
+        d.studentLastName = f.Faker().last_name()
+        d.fromDepartment = models.departments.objects.get(departmentName=xs[i])
+        d.major = f.Faker().random_element(majors[xs[i]])
+        d.stage = random.randint(1, 4)
+        d.save()
+        d = None
+        if x in range(1000, 7000, 1000):
+            i =  i + 1
+
+
+departments:
+def home(r: HttpRequest):
+      xs = ['mathmatics', 'computer science & IT', 'physics', 'chemistry', 'environmental studies', 'biology', 'geology']
+      for x in range(7):
+        d = models.departments()
+        d.departmentName = xs[x]
+        d.dean = f.Faker().name_male()
+        d.save()
+        d = None
+        return HttpResponse(content=models.students.objects.all(), status=200)
+
+
+
+courses:
+tots = [models.tutors.objects.all().filter(tutorDepartment=models.departments.objects.get(departmentName=xs[0])),
+    models.tutors.objects.all().filter(tutorDepartment=models.departments.objects.get(departmentName=xs[1])),
+     models.tutors.objects.all().filter(tutorDepartment=models.departments.objects.get(departmentName=xs[2])),
+    models.tutors.objects.all().filter(tutorDepartment=models.departments.objects.get(departmentName=xs[3])),
+    models.tutors.objects.all().filter(tutorDepartment=models.departments.objects.get(departmentName=xs[4])),
+    models.tutors.objects.all().filter(tutorDepartment=models.departments.objects.get(departmentName=xs[5])),
+     models.tutors.objects.all().filter(tutorDepartment=models.departments.objects.get(departmentName=xs[6])),
+     ]
+    for x in range(7):
+        for xx in range(4):
+            for xxx in range(len((majors[xs[x]][xmaj[xx]]))):
+                d = models.courses()
+                d.courseName = majors[xs[x]][xmaj[xx]][xxx]
+                d.byDepartment = models.departments.objects.get(departmentName=xs[x])
+                d.semster = random.randint(1, 2)
+                d.taughtBy = tots[x][xxx]
+                d.year = random.randint(1, 4)
+                d.save()
+                d = None
+
+
+classes:
+crs = models.courses.objects.filter(byDepartment=models.departments.objects.get(departmentName='computer science & IT')).filter(year=4).all()
+    
+
+    for days in range(30):
+        for classes in range(len(crs)):
+            CI = models.classes()
+            CI.takenCourse = crs[classes]
+            t1 = datetime.time(random.randint(8, 11), random.randint(0, 59))
+            CI.tutor = models.courses.objects.filter(taughtBy=CI.takenCourse.taughtBy).filter(year=CI.takenCourse.year).get().taughtBy
+            CI.date = datetime.date.today() + datetime.timedelta(days=days)
+            CI.classSessionStart = t1
+            CI.classSessionEnd = datetime.time(t1.hour + 2, t1.minute)
+            CI.tutorPresent = 0 if random.randint(0, 200) == 4 else 0
+            CI.save()
+            CI = None
+    #x = datetime.time(random.randint(12, 15), random.randint(0, 59))
+    return HttpResponse(content='x', status=200)
+
+attendance:
+studens = models.students.objects.filter(Q(fromDepartment__departmentName='computer science & IT') & Q(stage=4)).all()
+    for clas in models.classes.objects.all():
+        for s in studens:
+            a = models.attendance()
+            a.ofClass = clas
+            a.ofStudent = s
+            a.present =  0 if random.choice([x for x in range(100)]) < 10 else 1
+            a.save()
+    return HttpResponse(content=models.classes.objects.select_related('takenCourse').distinct('takenCourse').count(), status=200)
+
+time table & timeTableDistrivution:
+depas = models.departments.objects.all()
+    for deps in depas:
+        for stage in range(4):
+            tt = models.timeTable()
+            tt.timeTableID = uuid.uuid4()
+            tt.department = deps
+            tt.stage = stage+1
+            tt.save()
+            courss = models.courses.objects.filter(byDepartment=deps, year=stage+1)
+            days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday']
+            dayWithCourse = 0
+            for day in range(len(days)):
+                cls = models.timeTableclassDistribution()
+                cls.timeTableSelector = tt
+                cls.course = courss[dayWithCourse + day]
+                cls.day = days[day]
+                cls.sessionStart = datetime.time(8, 30, 0)
+                cls.sessionEnd = datetime.time(10, 0, 0)
+                cls.save()
+                cls1 = models.timeTableclassDistribution()
+                cls1.timeTableSelector = tt
+                cls1.course = courss[1]
+                cls1.day = days[day]
+                cls1.sessionStart = datetime.time(10, 30, 0)
+                cls1.sessionEnd = datetime.time(12, 0, 0)
+                cls1.save()
+
+
+
