@@ -11,5 +11,7 @@ urlpatterns = [
     path('pullMyStats', views.sendStudentAttendanceStats),
     path('pullMyLeaveRequests', views.studentLeaveRequestsHistory),
     path('pullTimeTable', views.sendStudentTimeTable),
+    path('pullAvailableCourses', views.sendAvailableCoursesToTeacher),
+    path('pullRecords', views.sendAttendanceRecords),
     path('pullAttendanceStats', views.sendAttendanceHistoryToTeacher),
 ]

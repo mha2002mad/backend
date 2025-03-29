@@ -3,8 +3,8 @@ import random
 from django.http import HttpResponse,HttpRequest, HttpResponseRedirect
 from . import models
 import json
-from django.db.models import Q, Prefetch
-from django.db.models.functions import Cast, Concat
+from django.db.models import Q, Prefetch, OuterRef, Subquery
+from django.db.models.functions import Cast, Concat, Coalesce
 from django.db.models import fields, Value
 from django import forms
 from django.middleware.csrf import get_token
@@ -241,7 +241,7 @@ def sendStudentAttendanceStats(r: HttpRequest):
         present=0
         ).annotate(
             date = Cast('ofClass__date', fields.CharField()),
-            course = Cast('ofClass__takenCourse__courseName', fields.CharField())
+            course = Cast('ofClass__takenCourse__courseName', fields.CharField()),
         ).values('course', 'date'))
     return HttpResponse(content=json.dumps(data))
 
@@ -276,6 +276,50 @@ def sendStudentAttendanceStats(r: HttpRequest):
 #     x.set_cookie('data', json.dumps(data['leaveRequests']))
 #     x.set_cookie('data', json.dumps(data['']))
 #     return HttpResponse(content={})
+
+def sendAvailableCoursesToTeacher(r: HttpRequest):
+    courses = models.attendance.objects.filter(
+        ofClass__takenCourse__taughtBy__tutorID = r.session['userID'],
+    ).distinct('ofClass__takenCourse__courseID')
+    data = []
+    for course in courses:
+        if models.attendance.objects.filter(ofClass = course.ofClass).count() == 0:
+            continue
+        else:
+            data.append({
+                'name': course.ofClass.takenCourse.courseName,
+                'ID': course.ofClass.takenCourse.courseID.__str__()
+            })
+    return HttpResponse(content=json.dumps(data))
+
+def sendAttendanceRecords(r: HttpRequest):
+    fromDate = json.loads(r.body.decode('utf-8'))['fromDate']
+    toDate = json.loads(r.body.decode('utf-8'))['toDate']
+    course = json.loads(r.body.decode('utf-8'))['course']
+    data = list(
+        models.attendance.objects.filter(
+        ofClass__takenCourse__courseID = course,
+        present = 0,
+        ofClass__date__gte = fromDate,
+        ofClass__date__lte = toDate
+        ).annotate(
+            studentName = Concat('ofStudent__studentFirstName', Value(' '), 'ofStudent__studentLastName'),
+            date = Cast('ofClass__date', output_field=fields.CharField()),
+            reason = Coalesce(Subquery(
+                models.leaveRequests.objects.filter(
+                byStudent__studentID = OuterRef('ofStudent__studentID'),
+                forCourse__courseID = course,
+                forDate = OuterRef('ofClass__date'),
+            ).values('reason')), Value('no reason'), output_field=fields.CharField())
+        ).values(
+            'studentName',
+            'date',
+            'reason'
+        )
+    )
+
+    return HttpResponse(content=json.dumps(data))
+
 
 def sendAttendanceHistoryToTeacher(r: HttpRequest):
     data = {}
