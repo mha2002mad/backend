@@ -188,6 +188,7 @@ def amIAValid(r: HttpRequest):
          return HttpResponse(content=json.dumps({'message': 'negative'}))
     if r.session['role'] is None or r.session['role'] is not json.loads(r.body.decode('utf-8'))['role']:
          return HttpResponse(content=json.dumps({'message': 'negative'}))
+    print(r.session['userID'])
     return HttpResponse(content=json.dumps({'message': 'positive'}))
 
 def sendStudentTimeTable(r: HttpRequest):
@@ -245,38 +246,6 @@ def sendStudentAttendanceStats(r: HttpRequest):
         ).values('course', 'date'))
     return HttpResponse(content=json.dumps(data))
 
-# def sendTeacherData(r: HttpRequest):
-#     data['leaveRequests'] = list(models.leaveRequests.objects.filter(
-#         forCourse__taughtBy__tutorID = r.session['userID']
-#     ).annotate(
-#         student = Concat('byStudent__studentFirstName', Value(' '), 'byStudent__studentLastName', output_field=fields.CharField()),
-#         studentID = Cast('byStudent__studentID', fields.CharField()),
-#         date = Cast('forDate', fields.CharField()),
-#         courseID = Cast('forCourse__courseID', fields.CharField()),
-#         courseName = Cast('forCourse__courseName', fields.CharField()),
-#     ).values('student', 'studentID', 'date', 'courseID', 'courseName'))
-    
-
-#     courses = models.courses.objects.filter(
-#         taughtBy__tutorID = r.session['userID'],
-#     )
-#     data['storeAttendance'] = {}
-#     for course in courses:
-#         data['storeAttendance'][course.courseName] = list(models.students.objects.filter(
-#             stage = course.year,
-#             fromDepartment = course.byDepartment.departmentID
-#         ).annotate(
-#             student = Concat('studentFirstName', Value(' '), 'studentLastName', output_field=fields.CharField()),
-#             ID = Cast('studentID', fields.CharField()),
-#         ).values('student', 'ID', 'stage'))
-    
-#     x = HttpResponse()
-#     x.set_cookie('data', json.dumps(data['weeklyPresence']))
-#     x.set_cookie('data', json.dumps(data['monthlyPresence']))
-#     x.set_cookie('data', json.dumps(data['leaveRequests']))
-#     x.set_cookie('data', json.dumps(data['']))
-#     return HttpResponse(content={})
-
 def sendAvailableCoursesToTeacher(r: HttpRequest):
     courses = models.attendance.objects.filter(
         ofClass__takenCourse__taughtBy__tutorID = r.session['userID'],
@@ -291,6 +260,30 @@ def sendAvailableCoursesToTeacher(r: HttpRequest):
                 'ID': course.ofClass.takenCourse.courseID.__str__()
             })
     return HttpResponse(content=json.dumps(data))
+
+def sendleaveRequestsToTeacher(r: HttpRequest):
+    data = list(models.leaveRequests.objects.filter(
+        forCourse__taughtBy__tutorID = r.session['userID']
+    ).annotate(
+        IDC = Cast('forCourse__courseID', output_field=fields.CharField()),
+        course = Cast('forCourse__courseName', output_field=fields.CharField()),
+        IDS = Cast('byStudent__studentID', output_field=fields.CharField()),
+        student = Concat('byStudent__studentFirstName', Value(' '), 'byStudent__studentLastName'),
+        date = Cast('forDate', output_field=fields.CharField())
+    ).values('IDS', 'student', 'reason', 'IDC', 'course', 'date', 'statusI', 'statusII'))
+
+    return HttpResponse(content=json.dumps(data))
+
+def updateLeaveRequest(r: HttpRequest):
+    requestData = json.loads(r.body.decode('utf-8'))
+    LRI = models.leaveRequests.objects.filter(
+        forCourse__courseID = requestData['course'],
+        byStudent__studentID = requestData['student'],
+        forDate = requestData['date']
+    ).first()
+    LRI.statusI = 'rejected' if requestData['status'] == 0 else 'approved'
+    LRI.save()
+    return HttpResponse(content=json.dumps({'message': 'positive'}))
 
 def sendAttendanceRecords(r: HttpRequest):
     fromDate = json.loads(r.body.decode('utf-8'))['fromDate']
@@ -321,6 +314,69 @@ def sendAttendanceRecords(r: HttpRequest):
     return HttpResponse(content=json.dumps(data))
 
 
+
+
+def sendStudentsForAttendanceInput(r: HttpRequest):
+    course = json.loads(r.body.decode('utf-8'))['course']
+    course = models.courses.objects.filter(courseID=course).first()
+
+    students = list(
+        models.students.objects.filter(
+            stage = course.year,
+            fromDepartment = course.byDepartment
+        ).annotate(
+            ID = Cast('studentID', output_field=fields.CharField()),
+            studentName = Concat('studentFirstName', Value(' '), 'studentLastName'),
+        ).values('ID', 'studentName')
+    )
+    return HttpResponse(content=json.dumps(students))
+
+def sendTodayTakenCourses(r: HttpRequest):
+    theDay = datetime.datetime.today().strftime('%A').lower()
+    tutor = models.tutors.objects.filter(tutorID=r.session['userID']).first()
+    courses = list(models.timeTableclassDistribution.objects.filter(
+        timeTableSelector__department__departmentID = tutor.tutorDepartment.departmentID,
+        day = theDay,
+        course__taughtBy__tutorID = tutor.tutorID
+    ).annotate(
+        ID = Cast('course__courseID', output_field=fields.CharField()),
+        TTDID = Cast('timeTableSelector__timeTableID', output_field=fields.CharField()),
+    ).values('ID', 'course__courseName', 'TTDID', 'day'))
+    return HttpResponse(content=json.dumps(courses))
+
+def storeAttendance(r: HttpRequest):
+    input = json.loads(r.body.decode('utf-8'))
+    clasinfo = models.timeTableclassDistribution.objects.filter(
+        course__courseID = input['course'],
+        timeTableSelector__timeTableID = input['TTDID'],
+        day = input['day']
+    ).first()
+    takenCourse = models.courses.objects.filter(courseID = input['course']).first()
+    if models.classes.objects.filter(
+        takenCourse = clasinfo.course,
+        date = datetime.date.today(),
+        classSessionStart = clasinfo.sessionStart,
+        classSessionEnd = clasinfo.sessionEnd,
+    ).exists():
+        return HttpResponse(content=json.dumps({'message': 'already stored'}))
+    clas = models.classes()
+    clas.classSessionStart = clasinfo.sessionStart
+    clas.classSessionEnd = clasinfo.sessionEnd
+    clas.tutorPresent = 1
+    clas.date = datetime.date.today()
+    clas.takenCourse = takenCourse
+    clas.tutor = models.tutors.objects.filter(tutorID = r.session['userID']).first()
+    clas.save()
+    data = []
+    for student in input['data']:
+        data.append(models.attendance(
+            ofClass = clas,
+            ofStudent = models.students.objects.filter(studentID = student['ID']).first(),
+            present = student['present']
+        ))
+    models.attendance.objects.bulk_create(data)
+    return HttpResponse(json.dumps({'message': 'positive'}))
+
 def sendAttendanceHistoryToTeacher(r: HttpRequest):
     data = {}
     data['precenceStages'] = []
@@ -350,9 +406,18 @@ def sendAttendanceHistoryToTeacher(r: HttpRequest):
 
 
 def pinLeaveRequest(r: HttpRequest):
-    print(json.loads(r.body.decode('utf-8'))['lectureName'])
     lecure = models.courses.objects.filter(courseName=json.loads(r.body.decode('utf-8'))['lectureName']).first()
     student = models.students.objects.filter(studentID=r.session['userID']).first()
+    if models.leaveRequests.objects.filter(
+        byStudent__studentID = r.session['userID'],
+        forCourse = lecure,
+        forDate = json.loads(r.body.decode('utf-8'))['forDate']
+    ).exists():
+        models.leaveRequests.objects.filter(
+        byStudent__studentID = r.session['userID'],
+        forCourse = lecure,
+        forDate = json.loads(r.body.decode('utf-8'))['forDate']).first().reason = json.loads(r.body.decode('utf-8'))['reason']
+        return HttpResponse(content=json.dumps({'message': 'success'}))
     LRrecord = models.leaveRequests()
     LRrecord.byStudent = student
     LRrecord.forCourse = lecure
