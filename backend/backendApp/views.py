@@ -12,102 +12,37 @@ from django.views.decorators.csrf import csrf_exempt
 from django.core.serializers import serialize
 import uuid
 
-def findWeeklyPrecense(r: HttpRequest):
-    allRecords = models.attendance.objects.filter(
-        ofStudent = r.session['userID'],
-        ofClass__takenCourse__year = models.students.objects.filter(studentID=r.session['userID']).first().stage,
-    )
-    weeklyPresence = []
 
-    precensePerWeek = 0
-    for i in range(len(allRecords)):
-        precensePerWeek += allRecords[i].present
-        if i % 5 == 0:
-            weeklyPresence.append((precensePerWeek/5) * 100)
-            precensePerWeek = 0
+def findPresencePercentageT(course):
+    up = models.attendance.objects.filter(
+        ofClass__takenCourse = course,
+        present = 1,
+        ofStudent__stage = course.year
+    ).count()
+    down = models.attendance.objects.filter(
+        ofClass__takenCourse = course,
+        ofStudent__stage = course.year
+    ).count()
+    if down == 0:
+        return 'NaN'
+    else:
+        return (up/down) * 100
 
-    return sum(weeklyPresence) / len(weeklyPresence)
-
-def findWeeklyPrecenseT(r: HttpRequest):
-    allRecords = models.attendance.objects.filter(
-        ofClass__tutor__tutorID = r.session['userID'],
-    )
-    weeklyPresence = []
-
-    precensePerWeek = 0
-    for i in range(len(allRecords)):
-        precensePerWeek += allRecords[i].present
-        if i % 5 == 0:
-            weeklyPresence.append((precensePerWeek/5) * 100)
-            precensePerWeek = 0
-
-    return sum(weeklyPresence) / len(weeklyPresence)
-
-
-def findMonthlyPresencePercentage(r: HttpRequest):
-    presencePerMonth = []
-    eachMonthPresence = 0
-    stage = int(models.students.objects.filter(studentID=r.session['userID']).first().stage)
-    for month in [x for x in range(1, 13)]:
-        areThereRecords = models.attendance.objects.filter(
-            ofStudent=r.session['userID'],
-            ofClass__takenCourse__year = stage,
-            ofClass__date__month=month).count()
+def findPresencePercentageS(course, student):
+    up = models.attendance.objects.filter(
+        ofClass__takenCourse = course,
+        present = 1,
+        ofStudent = student
+    ).count()
+    down = models.attendance.objects.filter(
+        ofClass__takenCourse = course,
+        ofStudent = student
+    ).count()
+    if down == 0:
+        return 'NaN'
+    else:
+        return (up/down) * 100
         
-        if areThereRecords == 0:
-            continue
-
-
-        monthlyRevisionOfpresence = models.attendance.objects.filter(
-            ofStudent=r.session['userID'],
-            ofClass__takenCourse__year = stage,
-            present=1,
-            ofClass__date__month=month).count()
-
-        monthlyRevisionOfclasses = models.attendance.objects.filter(
-            ofStudent=r.session['userID'],
-            ofClass__takenCourse__year = stage,
-            ofClass__date__month=month).count()
-
-        if monthlyRevisionOfclasses == 0:
-            continue
-        eachMonthPresence = (monthlyRevisionOfpresence / monthlyRevisionOfclasses) * 100
-        presencePerMonth.append(eachMonthPresence)
-        eachMonthPresence = 0
-    print(presencePerMonth)
-    return sum(presencePerMonth) / len(presencePerMonth)
-
-def findMonthlyPresencePercentageT(r: HttpRequest):
-    presencePerMonth = []
-    eachMonthPresence = 0
-    for month in [x for x in range(1, 13)]:
-        areThereRecords = models.attendance.objects.filter(
-            ofClass__tutor__tutorID = r.session['userID'],
-             ofClass__date__month=month
-            ).count()
-        
-        if areThereRecords == 0:
-            continue
-
-
-        monthlyRevisionOfpresence = models.attendance.objects.filter(
-            ofClass__tutor__tutorID = r.session['userID'],
-            present=1,
-            ofClass__date__month=month
-            ).count()
-
-        monthlyRevisionOfclasses = models.attendance.objects.filter(
-            ofClass__tutor__tutorID = r.session['userID'],
-            ofClass__date__month=month
-            ).count()
-
-        if monthlyRevisionOfclasses == 0:
-            continue
-        eachMonthPresence = (monthlyRevisionOfpresence / monthlyRevisionOfclasses) * 100
-        presencePerMonth.append(eachMonthPresence)
-        eachMonthPresence = 0
-    print(presencePerMonth)
-    return sum(presencePerMonth) / len(presencePerMonth)
 
 class LoginForm(forms.Form):
     class meta:
@@ -221,29 +156,79 @@ def studentLeaveRequestsHistory(r: HttpRequest):
 
 def sendWeekMonth(r: HttpRequest):
     if r.session['role'] is 'T':
-        monthlyPresence = findMonthlyPresencePercentageT(r)
-        weeklyPresence = findWeeklyPrecenseT(r)
+        courses = list(models.courses.objects.filter(
+            taughtBy__tutorID = r.session['userID']
+        ))
+        data = []
+        for course in courses:
+            val = findPresencePercentageT(course)
+            data.append({'{}'.format(course.courseName): val if val != 'NaN' else 'NaN' })
+        return HttpResponse(content=json.dumps(data))
     elif r.session['role'] is 'S':
-        monthlyPresence = findMonthlyPresencePercentage(r)
-        weeklyPresence = findWeeklyPrecense(r)
+        student = models.students.objects.filter(
+            studentID = r.session['userID']
+        ).first()
+        courses = models.courses.objects.filter(
+            byDepartment = student.fromDepartment,
+            year = student.stage
+        )
+        data = []
+        for course in courses:
+            val = findPresencePercentageS(course, student)
+            data.append({'{}'.format(course.courseName): val if val != 'NaN' else 'NaN' })
+        return HttpResponse(content=json.dumps(data))
 
-    return HttpResponse(content=json.dumps({
-        'weeklyPresence': weeklyPresence,
-        'monthlyPresence': monthlyPresence
-    }))
+
+def sendTakenCoursesToStudent(r: HttpRequest):
+    student = models.students.objects.filter(
+        studentID = r.session['userID']
+    ).first()
+    courses = list(models.courses.objects.filter(
+        year = student.stage,
+        byDepartment = student.fromDepartment
+    ).annotate(
+        ID = Cast('courseID', output_field=fields.CharField())
+    ).values('ID', 'courseName'))
+    return HttpResponse(json.dumps(courses))
+
+
+def sendTableDataToStudent(r: HttpRequest):
+    student = models.students.objects.filter(
+        studentID = r.session['userID']
+    ).first()
+    courses = models.courses.objects.filter(
+        year = student.stage,
+        byDepartment = student.fromDepartment
+    ).annotate(
+        ID = Cast('courseID', output_field=fields.CharField())
+    )
+    
+    data = []
+    for course in courses:
+        data.append({
+            "{}".format(course.courseName): models.attendance.objects.filter(
+            ofStudent__studentID = r.session['userID'],
+            ofClass__takenCourse = course,
+            present = 0
+        ).count()
+        })
+    return HttpResponse(content=json.dumps(data))
+
 
 def sendStudentAttendanceStats(r: HttpRequest):
     student = models.students.objects.filter(
         studentID = r.session['userID']
     ).first()
+    course = models.courses.objects.filter(courseID = json.loads(r.body.decode('utf-8'))['course']).first()
     data = list(models.attendance.objects.filter(
-        ofStudent=r.session['userID'],
+        ofStudent = student,
         ofClass__takenCourse__year = student.stage,
-        present=0
+        present=0,
+        ofClass__takenCourse = course
         ).annotate(
             date = Cast('ofClass__date', fields.CharField()),
-            course = Cast('ofClass__takenCourse__courseName', fields.CharField()),
-        ).values('course', 'date'))
+        ).values('date'))
+    print(data)
     return HttpResponse(content=json.dumps(data))
 
 def sendAvailableCoursesToTeacher(r: HttpRequest):
@@ -313,8 +298,21 @@ def sendAttendanceRecords(r: HttpRequest):
 
     return HttpResponse(content=json.dumps(data))
 
-
-
+def sendName(r: HttpRequest):
+    if r.session['role'] == 'S':
+        name = list(models.students.objects.filter(
+            studentID = r.session['userID']
+        ).annotate(
+            name = Concat('studentFirstName', Value(' '), 'studentLastName')
+        ).values('name'))
+    else:
+        name = list(models.tutors.objects.filter(
+            tutorID = r.session['userID']
+        ).annotate(
+            name = Concat('tutorFirstName', Value(' '), 'tutorLastName')
+        ).values('name'))
+        print(name)
+    return HttpResponse(content=name[0]['name'])
 
 def sendStudentsForAttendanceInput(r: HttpRequest):
     course = json.loads(r.body.decode('utf-8'))['course']
@@ -427,3 +425,15 @@ def pinLeaveRequest(r: HttpRequest):
     LRrecord.reason = json.loads(r.body.decode('utf-8'))['reason']
     LRrecord.save()
     return HttpResponse(content=json.dumps({'message': 'success'}))
+
+def logUserOut(r: HttpRequest):
+    if not r.session.exists(r.COOKIES.get('sessionid')):
+        return HttpResponse(content=json.dumps({'message': 'negative'}))
+    cookies = r.COOKIES.keys()
+    r.session.flush()
+    r.session.set_expiry(0)
+    r.session.clear()
+    response = HttpResponse(content=json.dumps({'message': 'positive'}))
+    for key in cookies:
+        response.delete_cookie(key)
+    return HttpResponse(content=json.dumps({'message': 'positive'}))
