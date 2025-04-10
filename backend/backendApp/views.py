@@ -123,7 +123,6 @@ def amIAValid(r: HttpRequest):
          return HttpResponse(content=json.dumps({'message': 'negative'}))
     if r.session['role'] is None or r.session['role'] is not json.loads(r.body.decode('utf-8'))['role']:
          return HttpResponse(content=json.dumps({'message': 'negative'}))
-    print(r.session['userID'])
     return HttpResponse(content=json.dumps({'message': 'positive'}))
 
 def sendStudentTimeTable(r: HttpRequest):
@@ -228,7 +227,6 @@ def sendStudentAttendanceStats(r: HttpRequest):
         ).annotate(
             date = Cast('ofClass__date', fields.CharField()),
         ).values('date'))
-    print(data)
     return HttpResponse(content=json.dumps(data))
 
 def sendAvailableCoursesToTeacher(r: HttpRequest):
@@ -270,16 +268,14 @@ def updateLeaveRequest(r: HttpRequest):
     LRI.save()
     return HttpResponse(content=json.dumps({'message': 'positive'}))
 
-def sendAttendanceRecords(r: HttpRequest):
-    fromDate = json.loads(r.body.decode('utf-8'))['fromDate']
-    toDate = json.loads(r.body.decode('utf-8'))['toDate']
-    course = json.loads(r.body.decode('utf-8'))['course']
-    data = list(
+def sendAttendance(studentName, fromDate, toDate, course):
+    if studentName == '':
+        data = list(
         models.attendance.objects.filter(
         ofClass__takenCourse__courseID = course,
         present = 0,
         ofClass__date__gte = fromDate,
-        ofClass__date__lte = toDate
+        ofClass__date__lte = toDate,
         ).annotate(
             studentName = Concat('ofStudent__studentFirstName', Value(' '), 'ofStudent__studentLastName'),
             date = Cast('ofClass__date', output_field=fields.CharField()),
@@ -294,8 +290,68 @@ def sendAttendanceRecords(r: HttpRequest):
             'date',
             'reason'
         )
-    )
+        )
+        return data
 
+
+    else:
+        names = str(studentName).split()
+        if len(names) == 1:
+            data = list(
+            models.attendance.objects.filter(
+            Q(ofStudent__studentFirstName__istartswith = names[0]) | Q(ofStudent__studentLastName__istartswith = names[0]),
+            ofClass__takenCourse__courseID = course,
+            present = 0,
+            ofClass__date__gte = fromDate,
+            ofClass__date__lte = toDate,
+            ).annotate(
+                studentName = Concat('ofStudent__studentFirstName', Value(' '), 'ofStudent__studentLastName'),
+                date = Cast('ofClass__date', output_field=fields.CharField()),
+                reason = Coalesce(Subquery(
+                    models.leaveRequests.objects.filter(
+                    byStudent__studentID = OuterRef('ofStudent__studentID'),
+                    forCourse__courseID = course,
+                    forDate = OuterRef('ofClass__date'),
+                ).values('reason')), Value('no reason'), output_field=fields.CharField())
+            ).values(
+                'studentName',
+                'date',
+                'reason'
+            )
+            )
+            return data
+        
+        else:
+            data = list(
+            models.attendance.objects.filter(
+            Q(ofStudent__studentFirstName__istartswith = names[0]) | Q(ofStudent__studentLastName__istartswith = names[1]),
+            ofClass__takenCourse__courseID = course,
+            present = 0,
+            ofClass__date__gte = fromDate,
+            ofClass__date__lte = toDate,
+            ).annotate(
+                studentName = Concat('ofStudent__studentFirstName', Value(' '), 'ofStudent__studentLastName'),
+                date = Cast('ofClass__date', output_field=fields.CharField()),
+                reason = Coalesce(Subquery(
+                    models.leaveRequests.objects.filter(
+                    byStudent__studentID = OuterRef('ofStudent__studentID'),
+                    forCourse__courseID = course,
+                    forDate = OuterRef('ofClass__date'),
+                ).values('reason')), Value('no reason'), output_field=fields.CharField())
+            ).values(
+                'studentName',
+                'date',
+                'reason'
+            )
+        )
+    return data
+
+def sendAttendanceRecords(r: HttpRequest):
+    studentName = json.loads(r.body.decode('utf-8'))['studentName']
+    fromDate = json.loads(r.body.decode('utf-8'))['fromDate']
+    toDate = json.loads(r.body.decode('utf-8'))['toDate']
+    course = json.loads(r.body.decode('utf-8'))['course']
+    data = sendAttendance(studentName, fromDate, toDate, course)
     return HttpResponse(content=json.dumps(data))
 
 def sendName(r: HttpRequest):
@@ -311,7 +367,6 @@ def sendName(r: HttpRequest):
         ).annotate(
             name = Concat('tutorFirstName', Value(' '), 'tutorLastName')
         ).values('name'))
-        print(name)
     return HttpResponse(content=name[0]['name'])
 
 def sendStudentsForAttendanceInput(r: HttpRequest):
@@ -375,32 +430,32 @@ def storeAttendance(r: HttpRequest):
     models.attendance.objects.bulk_create(data)
     return HttpResponse(json.dumps({'message': 'positive'}))
 
-def sendAttendanceHistoryToTeacher(r: HttpRequest):
-    data = {}
-    data['precenceStages'] = []
-    data['studentAttendance'] = {}
-    for stage in range(1, 5):
-        course = models.courses.objects.filter(
-            taughtBy__tutorID = r.session['userID'],
-            year = stage
-        )
+# def sendAttendanceHistoryToTeacher(r: HttpRequest):
+#     data = {}
+#     data['precenceStages'] = []
+#     data['studentAttendance'] = {}
+#     for stage in range(1, 5):
+#         course = models.courses.objects.filter(
+#             taughtBy__tutorID = r.session['userID'],
+#             year = stage
+#         )
 
-        if course.exists() == 0:
-            continue
+#         if course.exists() == 0:
+#             continue
 
-        if models.attendance.objects.filter(ofClass__tutor__tutorID = r.session['userID'], ofClass__takenCourse__courseID = course.first().courseID).count() == 0:
-            continue
+#         if models.attendance.objects.filter(ofClass__tutor__tutorID = r.session['userID'], ofClass__takenCourse__courseID = course.first().courseID).count() == 0:
+#             continue
 
-        data['precenceStages'].append(stage)
-        data['studentAttendance'][stage] = list(models.attendance.objects.filter(
-            ofClass__tutor__tutorID = r.session['userID'],
-            ofClass__takenCourse__courseID = course.first().courseID,
-            present=0
-        ).annotate(
-            student = Concat('ofStudent__studentFirstName', Value(' '), 'ofStudent__studentLastName', output_field=fields.CharField()),
-            course = Cast('ofClass__takenCourse__courseName', fields.CharField()),
-        ).values('student', 'course', 'present'))
-    return HttpResponse(content=json.dumps(data))
+#         data['precenceStages'].append(stage)
+#         data['studentAttendance'][stage] = list(models.attendance.objects.filter(
+#             ofClass__tutor__tutorID = r.session['userID'],
+#             ofClass__takenCourse__courseID = course.first().courseID,
+#             present=0
+#         ).annotate(
+#             student = Concat('ofStudent__studentFirstName', Value(' '), 'ofStudent__studentLastName', output_field=fields.CharField()),
+#             course = Cast('ofClass__takenCourse__courseName', fields.CharField()),
+#         ).values('student', 'course', 'present'))
+#     return HttpResponse(content=json.dumps(data))
 
 
 def pinLeaveRequest(r: HttpRequest):
