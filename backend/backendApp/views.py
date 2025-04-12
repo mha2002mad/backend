@@ -11,6 +11,8 @@ from django.middleware.csrf import get_token
 from django.views.decorators.csrf import csrf_exempt
 from django.core.serializers import serialize
 import uuid
+from django.db import transaction
+
 
 
 def findPresencePercentageT(course):
@@ -107,9 +109,9 @@ def login(r: HttpRequest):
 def amILogedIn(r: HttpRequest):
     if r.session.session_key is None:
         return HttpResponse(content=json.dumps({'message': 'negative'}))
-    if r.session['userID'] is None:
+    if not r.session['userID']:
         return HttpResponse(content=json.dumps({'message': 'negative'}))
-    if r.session['role'] is None:
+    if not r.session['role']:
         return HttpResponse(content=json.dumps({'message': 'negative'}))
     if r.session['role'] == 'S':
         return HttpResponse(content=json.dumps({'message': 'S'}))
@@ -430,33 +432,6 @@ def storeAttendance(r: HttpRequest):
     models.attendance.objects.bulk_create(data)
     return HttpResponse(json.dumps({'message': 'positive'}))
 
-# def sendAttendanceHistoryToTeacher(r: HttpRequest):
-#     data = {}
-#     data['precenceStages'] = []
-#     data['studentAttendance'] = {}
-#     for stage in range(1, 5):
-#         course = models.courses.objects.filter(
-#             taughtBy__tutorID = r.session['userID'],
-#             year = stage
-#         )
-
-#         if course.exists() == 0:
-#             continue
-
-#         if models.attendance.objects.filter(ofClass__tutor__tutorID = r.session['userID'], ofClass__takenCourse__courseID = course.first().courseID).count() == 0:
-#             continue
-
-#         data['precenceStages'].append(stage)
-#         data['studentAttendance'][stage] = list(models.attendance.objects.filter(
-#             ofClass__tutor__tutorID = r.session['userID'],
-#             ofClass__takenCourse__courseID = course.first().courseID,
-#             present=0
-#         ).annotate(
-#             student = Concat('ofStudent__studentFirstName', Value(' '), 'ofStudent__studentLastName', output_field=fields.CharField()),
-#             course = Cast('ofClass__takenCourse__courseName', fields.CharField()),
-#         ).values('student', 'course', 'present'))
-#     return HttpResponse(content=json.dumps(data))
-
 
 def pinLeaveRequest(r: HttpRequest):
     lecure = models.courses.objects.filter(courseName=json.loads(r.body.decode('utf-8'))['lectureName']).first()
@@ -482,6 +457,62 @@ def pinLeaveRequest(r: HttpRequest):
     return HttpResponse(content=json.dumps({'message': 'success'}))
 
 def logUserOut(r: HttpRequest):
+    if not r.session.exists(r.COOKIES.get('sessionid')):
+        return HttpResponse(content=json.dumps({'message': 'negative'}))
+    cookies = r.COOKIES.keys()
+    r.session.flush()
+    r.session.set_expiry(0)
+    r.session.clear()
+    response = HttpResponse(content=json.dumps({'message': 'positive'}))
+    for key in cookies:
+        response.delete_cookie(key)
+    return HttpResponse(content=json.dumps({'message': 'positive'}))
+
+def adminVibeCheck(r: HttpRequest):
+    userName = json.loads(r.body.decode('utf-8'))['username']
+    password = json.loads(r.body.decode('utf-8'))['password']
+    passKey = json.loads(r.body.decode('utf-8'))['passKey']
+    user = models.admins.objects.filter(
+        username = userName,
+        passWord = password,
+        secureKey = passKey
+    )
+    if not user.exists():
+        return HttpResponse(content=json.dumps({'message': 'negative'}))
+    else:
+        r.session['adminID'] = user.first().deanOf.departmentID.__str__()
+        return HttpResponse(content=json.dumps({'message': 'success'}))
+def sendAdminName(r: HttpRequest):
+    name = models.departments.objects.filter(
+        departmentID = r.session['adminID']
+    ).first().dean
+
+    return HttpResponse(content=json.dumps({'name': name}))
+
+@transaction.atomic
+def storeBuchOfStudents(r: HttpRequest):
+    data = json.loads(r.body.decode('utf-8'))
+    keys = list(dict(data[0]).keys())
+    for student in data:
+        try:
+            s = models.students()
+            s.studentFirstName = student[keys[0]]
+            s.studentLastName = student[keys[1]]
+            department = models.departments.objects.filter(
+                departmentName = student[keys[2]]
+            )
+            if not department.exists():
+                raise models.departments.DoesNotExist('no department named \"{}\" in student {}'.format(student[keys[2]], (student[keys[0]] + ' ' + student[keys[1]])))
+            s.fromDepartment = department.first()
+            s.major = student[keys[3]]
+            s.stage = student[keys[4]]
+            s.full_clean()
+            s.save()
+        except Exception as error:
+            return HttpResponse(content=json.dumps({'message': str(error)}))
+    return HttpResponse(content=json.dumps({'message': 'success'}))
+
+def logAdminOut(r: HttpRequest):
     if not r.session.exists(r.COOKIES.get('sessionid')):
         return HttpResponse(content=json.dumps({'message': 'negative'}))
     cookies = r.COOKIES.keys()

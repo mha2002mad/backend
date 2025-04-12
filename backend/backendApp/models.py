@@ -88,6 +88,8 @@ class attendance(models.Model):
 class admins(models.Model):
     userName = models.CharField(name='username', primary_key=True, unique=True, null=False)
     passWord = models.CharField(name='passWord', null=False)
+    deanOf = models.ForeignKey(departments, related_name='deanOf', to_field='departmentID', on_delete=models.CASCADE, default='a5b4705d-929b-46c0-b911-fe5e60fcd75c')
+    secureKey = models.CharField(name='secureKey', null=False, default='')
     class meta:
         db_table = 'admins'
 
