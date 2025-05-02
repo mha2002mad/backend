@@ -60,7 +60,7 @@ class LoginForm(forms.Form):
 
 @csrf_exempt
 def loadcsrf(r: HttpRequest):
-    if r.COOKIES.get('csrftoken') is None:
+    if 'csrftoken' not in r.COOKIES.values():
         resp = HttpResponse()
         resp.set_cookie('csrftoken', get_token(r), 1209800, path='/')
         return HttpResponse({})
@@ -109,9 +109,9 @@ def login(r: HttpRequest):
 def amILogedIn(r: HttpRequest):
     if r.session.session_key is None:
         return HttpResponse(content=json.dumps({'message': 'negative'}))
-    if not r.session['userID']:
+    if 'userID' not in r.session.keys():
         return HttpResponse(content=json.dumps({'message': 'negative'}))
-    if not r.session['role']:
+    if 'role' not in r.session.keys():
         return HttpResponse(content=json.dumps({'message': 'negative'}))
     if r.session['role'] == 'S':
         return HttpResponse(content=json.dumps({'message': 'S'}))
@@ -121,9 +121,10 @@ def amILogedIn(r: HttpRequest):
 def amIAValid(r: HttpRequest):
     if r.session.session_key is None:
          return HttpResponse(content=json.dumps({'message': 'negative'}))
-    if r.session['userID'] is None:
+    if not 'userID' in r.session.keys():
+         print(r.session.get('userID'))
          return HttpResponse(content=json.dumps({'message': 'negative'}))
-    if r.session['role'] is None or r.session['role'] is not json.loads(r.body.decode('utf-8'))['role']:
+    if ('role' not in r.session.keys()) or r.session['role'] is not json.loads(r.body.decode('utf-8'))['role']:
          return HttpResponse(content=json.dumps({'message': 'negative'}))
     return HttpResponse(content=json.dumps({'message': 'positive'}))
 
@@ -297,7 +298,7 @@ def sendAttendance(studentName, fromDate, toDate, course):
 
 
     else:
-        names = str(studentName).split()
+        names = str(studentName).split(' ')
         if len(names) == 1:
             data = list(
             models.attendance.objects.filter(
@@ -326,7 +327,7 @@ def sendAttendance(studentName, fromDate, toDate, course):
         else:
             data = list(
             models.attendance.objects.filter(
-            Q(ofStudent__studentFirstName__istartswith = names[0]) | Q(ofStudent__studentLastName__istartswith = names[1]),
+            Q(ofStudent__studentFirstName__istartswith = names[0]) & Q(ofStudent__studentLastName__istartswith = names[1]),
             ofClass__takenCourse__courseID = course,
             present = 0,
             ofClass__date__gte = fromDate,
@@ -456,17 +457,6 @@ def pinLeaveRequest(r: HttpRequest):
     LRrecord.save()
     return HttpResponse(content=json.dumps({'message': 'success'}))
 
-def logUserOut(r: HttpRequest):
-    if not r.session.exists(r.COOKIES.get('sessionid')):
-        return HttpResponse(content=json.dumps({'message': 'negative'}))
-    cookies = r.COOKIES.keys()
-    r.session.flush()
-    r.session.set_expiry(0)
-    r.session.clear()
-    response = HttpResponse(content=json.dumps({'message': 'positive'}))
-    for key in cookies:
-        response.delete_cookie(key)
-    return HttpResponse(content=json.dumps({'message': 'positive'}))
 
 def adminVibeCheck(r: HttpRequest):
     userName = json.loads(r.body.decode('utf-8'))['username']
@@ -482,6 +472,8 @@ def adminVibeCheck(r: HttpRequest):
     else:
         r.session['adminID'] = user.first().deanOf.departmentID.__str__()
         return HttpResponse(content=json.dumps({'message': 'success'}))
+
+
 def sendAdminName(r: HttpRequest):
     name = models.departments.objects.filter(
         departmentID = r.session['adminID']
@@ -513,6 +505,20 @@ def storeBuchOfStudents(r: HttpRequest):
     return HttpResponse(content=json.dumps({'message': 'success'}))
 
 def logAdminOut(r: HttpRequest):
+    print('x')
+    if not r.session.exists(r.COOKIES.get('sessionid')):
+        return HttpResponse(content=json.dumps({'message': 'negative'}))
+    cookies = r.COOKIES.keys()
+    r.session.flush()
+    r.session.set_expiry(0)
+    r.session.clear()
+    response = HttpResponse(content=json.dumps({'message': 'positive'}))
+    for key in cookies:
+        response.delete_cookie(key)
+    return HttpResponse(content=json.dumps({'message': 'positive'}))
+
+
+def logUserOut(r: HttpRequest):
     if not r.session.exists(r.COOKIES.get('sessionid')):
         return HttpResponse(content=json.dumps({'message': 'negative'}))
     cookies = r.COOKIES.keys()

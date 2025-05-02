@@ -9,11 +9,18 @@ https://docs.djangoproject.com/en/5.1/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.1/ref/settings/
 """
+import boto3.session
 import corsheaders
 from pathlib import Path
-
+import boto3
 import corsheaders.apps
 import corsheaders.middleware
+import json
+client = boto3.Session().client(
+    service_name='secretsmanager',
+    region_name='eu-north-1',
+)
+response = json.loads(client.get_secret_value(SecretId='studentAttendace').get('SecretString'))
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -23,10 +30,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-ar0-^6-c$jvx5*qhnca(9=i+ytf2f$l^mv0cwa@93r(g-_z%t7'
+SECRET_KEY = response['STUATTE_DJNAGO_SECRET_KEY']
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
 SESSION_ENGINE = 'django.contrib.sessions.backends.db'
 SESSION_COOKIE_SECURE = True
@@ -34,13 +41,11 @@ SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_AGE = 1209800
 SESSION_COOKIE_SAMESITE = 'None'
 ALLOWED_HOSTS = [
-  "127.0.0.1",
-  "localhost",
+  response['STUATTE_ALLOWED_HOSTS']
 ]
 
 CSRF_TRUSTED_ORIGINS = [
-  "http://127.0.0.1:8081",
-  "http://localhost:8081",
+  response['STUATTE_ALLOWED_HOSTS']
 ]
 
 CSRF_COOKIE_SECURE = True
@@ -51,8 +56,7 @@ CSRF_COOKIE_NAME = 'csrftoken'
 CORS_ALLOW_CREDENTIALS = True
 CORS_ORIGIN_ALLOW_ALL = False
 CORS_ALLOWED_ORIGINS = [
-  "http://127.0.0.1:8081",
-  "http://localhost:8081",
+  response['STUATTE_ALLOWED_HOSTS']
 ]
 
 CORS_ALLOW_HEADERS = [
@@ -70,7 +74,6 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'channels',
     'backendApp',
     'corsheaders',
 ]
@@ -114,11 +117,11 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'studentAttendance',
-        'USER': 'productionUser',
-        'PASSWORD': 'productionUser',
-        'HOST': '127.0.0.1',
-        'PORT': '5432',
+        'NAME': response['STUATTE_DB_NAME'],
+        'USER': response['STUATTE_DB_USER_NAME'],
+        'PASSWORD': response['STUATTE_DB_USER_PASSWORD'],
+        'HOST': response['STUATTE_DB_ACCESS'],
+        'PORT': response['STUATTE_DB_PORT'],
     }
 }
 
