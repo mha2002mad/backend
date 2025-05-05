@@ -20,11 +20,11 @@ client = boto3.Session().client(
     service_name='secretsmanager',
     region_name='eu-north-1',
 )
-response = json.loads(client.get_secret_value(SecretId='studentAttendace').get('SecretString'))
+temp = client.get_secret_value(SecretId='studentAttendace')
+response = json.loads(temp['SecretString'])
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
@@ -36,33 +36,57 @@ SECRET_KEY = response['STUATTE_DJNAGO_SECRET_KEY']
 DEBUG = False
 
 SESSION_ENGINE = 'django.contrib.sessions.backends.db'
-SESSION_COOKIE_SECURE = True
+SESSION_COOKIE_SECURE = False
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_AGE = 1209800
 SESSION_COOKIE_SAMESITE = 'None'
+SESSION_COOKIE_DOMAIN = response['STUATTE_FRONTEND_DOMAIN']
 ALLOWED_HOSTS = [
-  response['STUATTE_ALLOWED_HOSTS']
+  '{}'.format(response['STUATTE_ALLOWED_HOSTS']),
+  '{}'.format(response['STUATTE_LB_ADDR'])
 ]
 
 CSRF_TRUSTED_ORIGINS = [
-  response['STUATTE_ALLOWED_HOSTS']
+  'http://{}:8000'.format(response['STUATTE_ALLOWED_HOSTS'])
 ]
 
-CSRF_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = False
 CSRF_COOKIE_HTTPONLY = False
 CSRF_COOKIE_SAMESITE = 'None'
 CSRF_COOKIE_NAME = 'csrftoken'
+CSRF_COOKIE_DOMAIN = response['STUATTE_FRONTEND_DOMAIN']
 
 CORS_ALLOW_CREDENTIALS = True
 CORS_ORIGIN_ALLOW_ALL = False
 CORS_ALLOWED_ORIGINS = [
-  response['STUATTE_ALLOWED_HOSTS']
+  'http://{}:8000'.format(response['STUATTE_ALLOWED_HOSTS'])
 ]
 
 CORS_ALLOW_HEADERS = [
-  'Content-Type',
+    'Content-Type',
     'X-CSRFToken',
 ]
+
+USE_X_FORWARDED_HOST = True
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'file': {
+            'level': 'DEBUG',
+            'class': 'logging.FileHandler',
+            'filename': '/tmp/debug.log',
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['file'],
+            'level': 'DEBUG',
+            'propagate': True,
+        },
+    },
+}
 
 
 # Application definition
@@ -87,7 +111,6 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'django.contrib.sessions.middleware.SessionMiddleware',
 ]
 
 ROOT_URLCONF = 'backend.urls'
