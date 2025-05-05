@@ -1,0 +1,37 @@
+name: deployBackendServers
+on:
+  push:
+    branches:
+      - master
+
+
+jobs:
+  buildAndDeploy:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        ec2s: ['stuatte_backend_ec2_1', 'stuatte_backend_ec2_2']
+        
+    steps:
+      - name: getTheCodes
+        uses: actions/checkout@v3
+
+      - name: dockerLogIn
+        uses: docker/login-action@v3
+        with:
+          username: ${{secrets.docker_usr}}
+          password: ${{secrets.docker_psw}}
+
+      - name: dockeriseCode
+        run: docker build -t mha2002mad/sa-backend .
+
+      - name: pushToHub
+        run: docker push mha2002mad/sa-backend:latest
+
+      - name: deployOnServers
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          key: ${{secrets.STUATTE_EC2_KEY}}
+          username: ubuntu
+          host: ${{secrets[matrix.ec2s]}}
