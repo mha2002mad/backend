@@ -30,7 +30,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = response['STUATTE_DJNAGO_SECRET_KEY']
+SECRET_KEY = '{}'.format(response['STUATTE_DJNAGO_SECRET_KEY'])
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
@@ -40,7 +40,7 @@ SESSION_COOKIE_SECURE = False
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_AGE = 1209800
 SESSION_COOKIE_SAMESITE = 'None'
-SESSION_COOKIE_DOMAIN = response['STUATTE_FRONTEND_DOMAIN']
+SESSION_COOKIE_DOMAIN = '{}'.format(response['STUATTE_FRONTEND_DOMAIN'])
 ALLOWED_HOSTS = [
   '{}'.format(response['STUATTE_ALLOWED_HOSTS']),
   '{}'.format(response['STUATTE_LB_ADDR'])
@@ -54,7 +54,7 @@ CSRF_COOKIE_SECURE = False
 CSRF_COOKIE_HTTPONLY = False
 CSRF_COOKIE_SAMESITE = 'None'
 CSRF_COOKIE_NAME = 'csrftoken'
-CSRF_COOKIE_DOMAIN = response['STUATTE_FRONTEND_DOMAIN']
+CSRF_COOKIE_DOMAIN = '{}'.format(response['STUATTE_FRONTEND_DOMAIN'])
 
 CORS_ALLOW_CREDENTIALS = True
 CORS_ORIGIN_ALLOW_ALL = False
