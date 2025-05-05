@@ -35,3 +35,14 @@ jobs:
           key: ${{secrets.STUATTE_EC2_KEY}}
           username: ubuntu
           host: ${{secrets[matrix.ec2s]}}
+          run: |
+            sudo docker container stop SAB
+            sudo docker container rm SAB
+            sudo docker pull mha2002mad/sa-backend
+            sudo docker run -d --name SAB -p 8000:8000 mha2002mad/sa-backend
+                
+
+
+
+
+          
