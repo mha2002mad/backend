@@ -42,12 +42,11 @@ SESSION_COOKIE_AGE = 1209800
 SESSION_COOKIE_SAMESITE = 'None'
 SESSION_COOKIE_DOMAIN = '{}'.format(response['STUATTE_FRONTEND_DOMAIN'])
 ALLOWED_HOSTS = [
-  '{}'.format(response['STUATTE_ALLOWED_HOSTS']),
-  '{}'.format(response['STUATTE_LB_ADDR'])
+  '{}'.format(response['STUATTE_ALLOWED_HOSTS'])
 ]
 
 CSRF_TRUSTED_ORIGINS = [
-  'https://{}'.format(response['STUATTE_ALLOWED_HOSTS'])
+  'https://{}'.format(response['STUATTE_FRONTEND_DOMAIN'])
 ]
 
 CSRF_COOKIE_SECURE = True
@@ -59,7 +58,7 @@ CSRF_COOKIE_DOMAIN = '{}'.format(response['STUATTE_FRONTEND_DOMAIN'])
 CORS_ALLOW_CREDENTIALS = True
 CORS_ORIGIN_ALLOW_ALL = False
 CORS_ALLOWED_ORIGINS = [
-  'https://{}'.format(response['STUATTE_ALLOWED_HOSTS'])
+  'https://{}'.format(response['STUATTE_FRONTEND_DOMAIN'])
 ]
 
 CORS_ALLOW_HEADERS = [
