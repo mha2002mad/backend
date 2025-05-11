@@ -62,8 +62,8 @@ class LoginForm(forms.Form):
 def loadcsrf(r: HttpRequest):
     if 'csrftoken' not in r.COOKIES.values():
         resp = HttpResponse()
-        resp.set_cookie('csrftoken', get_token(r), 1209800, path='/')
-        return HttpResponse({})
+        resp.set_cookie('csrftoken', get_token(r))
+        return resp
     return HttpResponse({})
 
 def login(r: HttpRequest):
